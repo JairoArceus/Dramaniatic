@@ -1,0 +1,480 @@
+<!--DOCTYPE html-->
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>        </title>
+   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+   <link rel="stylesheet" href="https://ia600109.us.archive.org/34/items/troyanosymalware2.0/TROYANOS.CSS">
+  
+
+ </head>
+<style>
+.age {
+    font-weight: bold;
+    padding: 3px 6px;
+    border-radius: 6px;
+    color: white;
+    background-color: red;
+}
+
+
+     
+     
+</style>
+
+
+
+<body>
+  <div class="video"> 
+    <iframe id="videoFrame" width="100%" height="215" src="" frameborder="0" allowfullscreen></iframe> </div> 
+
+
+    <div class="content">
+        <h1 id="title">Cargando...</h1>
+        <div class="info">
+            <span class="textx" id="releaseYear"></span>
+            <span class="tag age" id="ageRating"></span>
+            <span class="textx" id="seasons"></span>
+            <span class="tag hd">FHD</span>
+        
+
+     <a href="go:Reportar">
+  <span class="texts">
+    <i class="fa-regular fa-comments"></i>
+  </span>
+</a>
+
+
+
+
+<i id="favoritoBtn" class="fa-solid fa-star" data-identificador="Newtopia" onclick="toggleFavorito()"></i>
+
+    <div id="favoritoData" style="display: none;">
+        <img id="favoritoImagen" class="poster" src="https://image.tmdb.org/t/p/w500/cIC36RA59lg9ruYtPc7UA3f72yy.jpg" alt="Poster de la Película">
+        <a id="favoritoEnlace" href=" " target="_blank"></a>
+        <span id="nombre">Newtopia</span>
+    </div>
+
+
+
+
+
+
+</div> 
+  
+      
+       
+<button class="play-btn" onclick="scrollToEpisodes()">
+    <i class="fas fa-play"></i> Reproducir
+</button>
+
+
+
+       
+       
+          
+            <a href="#" class="download-btn"><i class="fas fa-download"></i> Descargar</a>
+
+        <div class="description-container">
+            <p class="description-title">Sinopsis</p>
+            <p class="description" id="synopsis">Cargando...</p>
+        </div>
+
+     </div>
+
+    <div class="iframe-container" id="iframeContainer">
+        <iframe id="videoFramePopup" src="" frameborder="0"></iframe>
+        <button class="close-btn" onclick="closeIframe()">&#10006;</button>
+    </div>
+
+ <div class="reparto-container">
+        <div class="reparto" id="reparto"></div>
+    </div>
+<br><br>
+
+
+  <div class="container">
+    <div class="header">
+      <select id="season-selector">
+        <option value="1">Temporada 1</option>
+             
+       
+       
+       <!-- Añade más opciones de temporadas aquí si es necesario -->
+      </select>
+      <button id="sort-button">Nuevos <i class="fas fa-arrow-up"></i></button>
+    </div>
+    <ul class="episode-list" id="episode-list"></ul>
+    <div id="loading-indicator" style="display: none;">Cargando episodios...</div>
+  </div>
+
+
+
+<!-- Modal para el reproductor de video -->
+<div class="modal" id="video-modal">
+    <div class="modal-content">
+        <span class="close-button" id="close-modal">&times;</span>
+        <div class="video-container">
+           
+       <iframe id="video-frame"frameborder="0"allow="autoplay; fullscreen"allowfullscreen></iframe>
+
+           
+    </div>
+  </div>
+</div>
+
+ 
+<script>
+       const apiKey = "a56b4ad0336d32a08896e160060b3d32";
+const tmdbID = 233742; // Cambia el ID para probar
+let type = "tv"; // 'tv' para series, 'movie' para películas
+const baseUrl = "https://api.themoviedb.org/3";
+
+async function fetchTMDBData() {
+    try {
+        let response = await fetch(`${baseUrl}/tv/${tmdbID}?api_key=${apiKey}&language=es`);
+        let data = await response.json();
+
+        if (data.success === false) {
+            response = await fetch(`${baseUrl}/movie/${tmdbID}?api_key=${apiKey}&language=es`);
+            data = await response.json();
+            type = "movie";
+        } else {
+            type = "tv";
+        }
+
+        // Intentar obtener el título en español
+        let title = data.name || data.title;
+        
+        if (!title || title.match(/[\uac00-\ud7a3]/)) { // Si el título está en coreano
+            title = await obtenerTituloEnOtroIdioma(data.id, type);
+        }
+
+        document.getElementById("title").textContent = title;
+        document.getElementById("releaseYear").textContent = data.release_date 
+            ? data.release_date.split("-")[0] 
+            : (data.first_air_date ? data.first_air_date.split("-")[0] : "Desconocido");
+        document.getElementById("seasons").textContent = type === "tv" ? `${data.number_of_seasons} Temporadas` : "Película";
+        document.getElementById("synopsis").textContent = data.overview || "Sin descripción disponible.";
+
+ 
+
+const ageMapping = {
+                "G": "Para todos", "PG": "+10", "PG-13": "+13", "B-15": "+15", "R": "+18", "NC-17": "+18",
+                "TV-Y": "Para todos", "TV-Y7": "+7", "TV-G": "Para todos", "TV-PG": "+10", "TV-14": "+14", "TV-MA": "+18"
+            };
+            document.getElementById("ageRating").textContent = ageMapping[data.content_ratings?.results?.[0]?.rating] || "+18";
+
+            obtenerReparto();
+        } catch (error) {
+            console.error("Error al obtener datos de TMDB:", error);
+        }
+    }
+
+
+
+
+
+
+
+
+// Función para obtener título en español o inglés si el nombre está en coreano
+async function obtenerTituloEnOtroIdioma(id, type) {
+    try {
+        const response = await fetch(`${baseUrl}/${type}/${id}/translations?api_key=${apiKey}`);
+        const data = await response.json();
+
+        if (!data.translations) return "Título desconocido";
+
+        // Buscar traducción en español o inglés
+        const traduccionES = data.translations.translations.find(t => t.iso_639_1 === "es");
+        const traduccionEN = data.translations.translations.find(t => t.iso_639_1 === "en");
+
+        return traduccionES?.data?.title || traduccionEN?.data?.title || "Título desconocido";
+    } catch (error) {
+        console.error("Error al obtener traducciones:", error);
+        return "NO ENCONTRADO";
+    }
+}
+
+async function obtenerReparto() {
+    const url = `${baseUrl}/${type}/${tmdbID}/credits?api_key=${apiKey}&language=es-ES`;
+
+    try {
+        const respuesta = await fetch(url);
+        const datos = await respuesta.json();
+
+        const repartoDiv = document.getElementById('reparto');
+        repartoDiv.innerHTML = '';
+
+        datos.cast.slice(0, 50).forEach((actor) => {
+            const urlActor = `https://translate.google.com/translate?sl=en&tl=es&u=${encodeURIComponent(`https://www.themoviedb.org/person/${actor.id}`)}`;
+
+
+            const actorHTML = `
+                <div class="actor">
+                    <a href="${urlActor}" target="_blank">
+                        <img src="${actor.profile_path ? 'https://image.tmdb.org/t/p/w185' + actor.profile_path : 'https://via.placeholder.com/100'}" alt="${actor.name}">
+                        <p>${actor.name}</p>
+                    </a>
+                </div>
+            `;
+            repartoDiv.innerHTML += actorHTML;
+        });
+    } catch (error) {
+        console.error('Error al obtener el reparto:', error);
+    }
+}
+
+fetchTMDBData();
+
+    
+    
+    
+    
+    
+    
+    
+    let currentSeason = "1";
+    let seriesName = "";
+    const episodeList = document.getElementById("episode-list");
+    const sortButton = document.getElementById("sort-button");
+    const seasonSelector = document.getElementById("season-selector");
+    const modal = document.getElementById("video-modal");
+    const closeModal = document.getElementById("close-modal");
+    const loadingIndicator = document.getElementById("loading-indicator");
+    const videoIframe = document.getElementById("video-iframe");
+    let sortOrder = "new";
+    const cachedEpisodes = {};
+
+    const episodeLinks = {
+        "1": {
+     
+      1 : "https://ok.ru/videoembed/9233181379233",
+         
+      2 : "https://ok.ru/videoembed/9233181444769", 
+         
+      3 : "https://ok.ru/videoembed/9233181313697",
+          
+      4 : "https://ok.ru/videoembed/9233181248161", 
+         
+      5 : "https://ok.ru/videoembed/9233181510305", 
+         
+      6 : "https://ok.ru/videoembed/9233181117089",   
+       
+      7 : "",  
+        
+      8 : "https://ok.ru/videoembed/9233181182625", 
+         
+                  
+        },
+          "2": {
+               
+
+
+
+         
+                
+          }
+    };
+
+    const allowedEpisodesBySeason = {
+          
+          "1": { start: 1 },
+    
+    
+         "2": { start: 1 } };
+
+    async function getSeriesName() {
+        const url = `${baseUrl}/tv/${tmdbID}?api_key=${apiKey}&language=es`;
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+            seriesName = data.name || "Nombre de la serie no disponible";
+        } catch (error) {
+            console.error('Error al obtener el nombre de la serie:', error);
+        }
+    }
+
+    async function getEpisodes(seasonNumber) {
+        if (cachedEpisodes[seasonNumber]) return cachedEpisodes[seasonNumber];
+
+        loadingIndicator.style.display = "block";
+        const url = `${baseUrl}/tv/${tmdbID}/season/${seasonNumber}?api_key=${apiKey}&language=es`;
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+            cachedEpisodes[seasonNumber] = data.episodes;
+            loadingIndicator.style.display = "none";
+            return data.episodes;
+        } catch (error) {
+            console.error('Error al obtener episodios:', error);
+            loadingIndicator.style.display = "none";
+            return [];
+        }
+    }
+
+    async function renderEpisodes() {
+        episodeList.innerHTML = "";
+        const episodes = await getEpisodes(currentSeason);
+
+        if (!episodes || episodes.length === 0) {
+            episodeList.innerHTML = "<li>No se encontraron episodios para esta temporada.</li>";
+            return;
+        }
+
+        const allowedEpisodes = allowedEpisodesBySeason[currentSeason];
+        let filteredEpisodes = episodes.filter(ep => allowedEpisodes.start ? ep.episode_number >= allowedEpisodes.start : true);
+
+        if (filteredEpisodes.length === 0) {
+            episodeList.innerHTML = "<li>No se encontraron episodios para mostrar en esta temporada.</li>";
+            return;
+        }
+
+        const sortedEpisodes = sortOrder === "old" ? [...filteredEpisodes].reverse() : filteredEpisodes;
+
+        sortedEpisodes.forEach(episode => {
+            const uniqueKey = `${seriesName}-${currentSeason}-E${episode.episode_number}`;
+            const isWatched = localStorage.getItem(uniqueKey) === "true";
+            const videoUrl = episodeLinks[currentSeason]?.[episode.episode_number] || null;
+
+            const episodeItem = document.createElement("li");
+            episodeItem.className = "episode-item";
+            episodeItem.innerHTML = `
+                <img src="https://image.tmdb.org/t/p/w300${episode.still_path}" alt="${episode.name}" class="episode-image">
+                <div class="episode-info"><h3> Episodio ${episode.episode_number}</h3></div>
+                <div class="toggle-container">
+                    <span class="status-text">${isWatched ? "VISTO" : "NO VISTO"}</span>
+                    <div class="toggle">
+                        <input type="checkbox" id="${uniqueKey}" ${isWatched ? "checked" : ""}>
+                        <label for="${uniqueKey}"></label>
+                    </div>
+                </div>
+            `;
+            episodeList.appendChild(episodeItem);
+
+            episodeItem.addEventListener("click", (event) => {
+                if (!event.target.closest(".toggle-container") && videoUrl) openModal(videoUrl);
+            });
+
+            episodeItem.querySelector("input").addEventListener("change", (event) => {
+                localStorage.setItem(uniqueKey, event.target.checked);
+                episodeItem.querySelector(".status-text").textContent = event.target.checked ? "VISTO" : "NO VISTO";
+                event.stopPropagation();
+            });
+        });
+    }
+
+ 
+let playerInstance = null; // Variable para guardar el reproductor
+
+  function openModal(videoUrl) {
+        // Si el video es de Google Drive, ajustar la URL
+        if (videoUrl.includes("drive.google.com")) {
+            const fileId = videoUrl.match(/d\/(.*?)\//);
+            if (fileId) {
+                videoUrl = `https://drive.google.com/file/d/${fileId[1]}/preview`;
+            }
+        }
+
+        document.getElementById("video-frame").src = videoUrl;
+        document.getElementById("video-modal").classList.add("show");
+    }
+
+    document.getElementById("close-modal").addEventListener("click", () => {
+        document.getElementById("video-modal").classList.remove("show");
+        document.getElementById("video-frame").src = ""; // Limpiar el src para detener el video
+    });
+
+    // Cierra el modal si el usuario hace clic fuera del contenido
+    document.getElementById("video-modal").addEventListener("click", (event) => {
+        if (event.target === document.getElementById("video-modal")) {
+            document.getElementById("video-modal").classList.remove("show");
+            document.getElementById("video-frame").src = "";
+        }
+    });
+
+
+window.addEventListener("load", async () => {
+    await getSeriesName();
+    fetchTMDBData();
+    renderEpisodes();
+});
+
+    seasonSelector.addEventListener("change", (event) => {
+        currentSeason = event.target.value;
+        renderEpisodes();
+    });
+
+sortButton.addEventListener("click", () => {
+    sortOrder = sortOrder === "new" ? "old" : "new"; // Alterna entre 'new' y 'old'
+
+    // Cambia el texto y el icono según el orden
+    sortButton.innerHTML = sortOrder === "new"  
+        ? 'Nuevos <i class="fas fa-arrow-up"></i>'  
+        : 'Antiguos <i class="fas fa-arrow-down"></i>';  
+
+    renderEpisodes(); // Vuelve a renderizar la lista de episodios con el nuevo orden
+});
+
+
+</script>
+
+ <script>
+const favoritoBtn = document.getElementById('favoritoBtn');
+const identificador = favoritoBtn.getAttribute('data-identificador');
+
+function toggleFavorito() {
+    const favoritoEnlace = document.getElementById('favoritoEnlace');
+    const imagen = document.getElementById('favoritoImagen');
+    const nombre = document.getElementById('nombre').textContent; // Obtener el texto del span
+    const favoritos = JSON.parse(localStorage.getItem('favoritos')) || [];
+
+    const encontrado = favoritos.some(favorito => favorito.identificador === identificador);
+
+    if (encontrado) {
+        const nuevosFavoritos = favoritos.filter(favorito => favorito.identificador !== identificador);
+        favoritoBtn.textContent = '';
+        favoritoBtn.classList.remove('activo'); // Remover la clase activa
+        localStorage.setItem('favoritos', JSON.stringify(nuevosFavoritos));
+    } else {
+        favoritos.push({
+            identificador: identificador,
+            imagen: imagen.outerHTML,
+            enlace: favoritoEnlace.href,
+            nombre: nombre, // Agregar el nombre al objeto
+        });
+
+        favoritoBtn.textContent = '';
+        favoritoBtn.classList.add('activo'); // Agregar la clase activa
+        localStorage.setItem('favoritos', JSON.stringify(favoritos));
+    }
+}
+
+// Verifica al cargar si ya está en favoritos
+const favoritos = JSON.parse(localStorage.getItem('favoritos')) || [];
+const encontradoInicial = favoritos.some(favorito => favorito.identificador === identificador);
+
+if (encontradoInicial) {
+    favoritoBtn.textContent = '';
+    favoritoBtn.classList.add('activo'); // Aplicar clase activa si ya está en favoritos
+} else {
+    favoritoBtn.textContent = '';
+}
+
+</script> 
+<script>
+function scrollToEpisodes() {
+    // Intenta encontrar el primer episodio cargado por la API
+    let firstEpisode = document.querySelector('.episode-item'); 
+
+    if (firstEpisode) {
+        firstEpisode.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+        console.warn("No se encontró ningún episodio.");
+    }
+}
+</script>
+</body>
+</html>
